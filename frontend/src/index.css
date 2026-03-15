@@ -524,3 +524,120 @@ tr:hover td {
   .stats-row { grid-template-columns: 1fr; }
 }
 
+/* 🛡️ Privacy Packets V2 */
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 1.5rem 0;
+}
+
+.tier-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(20, 210, 201, 0.3);
+  transform: translateY(-2px);
+}
+
+.tier-card.selected {
+  background: rgba(20, 210, 201, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(20, 210, 201, 0.2);
+}
+
+.tier-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.tier-splits {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.tier-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--primary);
+  color: #000;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.packet-preparation {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(20, 210, 201, 0.2);
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0% { border-color: rgba(20, 210, 201, 0.2); }
+  50% { border-color: rgba(20, 210, 201, 0.6); }
+  100% { border-color: rgba(20, 210, 201, 0.2); }
+}
+
+.packet-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 1rem;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.packet-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 0.3;
+}
+
+.packet-dot.active {
+  animation: packet-flash 1s infinite;
+  opacity: 1;
+  box-shadow: 0 0 5px var(--primary);
+}
+
+@keyframes packet-flash {
+  0% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.5; }
+}
+
+.security-meter {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.security-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.5s ease-out;
+}
+

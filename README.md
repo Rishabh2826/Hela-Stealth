@@ -65,6 +65,47 @@ cd frontend && cp .env.example .env && npm run dev
 
 ---
 
+## 🚀 V2 Roadmap: Advanced Privacy Packets
+
+To combat **Amount Correlation Analysis** (preventing hackers from linking large unique payments across wallets), HeLa Stealth V2 will introduce **High-Frequency Dynamic Splitting**:
+
+### 📦 Privacy Tiers (High-Range Packets)
+Users can select a "Privacy Package" with massive randomization ranges:
+
+| Tier | Packet Split Range | Security Effect | Gas Profile |
+|------|--------------------|-----------------|-------------|
+| **Standard** | 1 (Fixed) | Basic Privacy | ⚡ High Speed |
+| **Iron Shield** | 50 – 100 Packets | Stealth Mixing | 🛡️ Secure |
+| **Gold Ghost** | 200 – 500 Packets | Trace-Breaking | 👻 Maximum |
+| **Infinite Shadow** | 1000+ Packets | Total Obfuscation | 🌌 Extreme |
+
+### 🛠️ The Technical Vision
+1.  **Fragmented Deposits**: A 5,000 HUSD payment is atomized into *hundreds* of random small amounts (e.g., 1.04, 15.6, 0.99...) impossible to link back to a single 5k transaction.
+2.  **Cross-Block Staggering**: Packets are deployed across different blocks over time, defeating temporal correlation.
+3.  **Fragmented Withdrawal**: Merchants can choose to withdraw specific packets or the whole set, providing ultimate control over their wallet's transaction fingerprint.
+
+---
+
+## 🚀 V2 Roadmap: Advanced Privacy Packets
+
+To combat **Amount Correlation Analysis** (where hackers link large unique amounts across wallets), HeLa Stealth V2 will introduce **Dynamic Packet Splitting**:
+
+### 📦 Privacy Tiers
+Users can select a "Privacy Package" with dynamic splitting ranges:
+
+| Tier | Packet Range | Privacy Level | Gas Efficiency |
+|------|--------------|---------------|----------------|
+| **Standard** | 1 (Fixed) | Basic | ⚡ High |
+| **Stealth Plus** | 5 – 15 Packets | Enhanced | 🛡️ Medium |
+| **Ghost Mode** | 20 – 50 Packets | Maximum | 👻 Low |
+
+### 🛠️ How it Works
+1.  **Dynamic Splitting**: A 10,000 HUSD payment is automatically broken into *randomized* amounts (e.g., 402, 1290, 88...) based on the selected range.
+2.  **Time-Staggered Deposits**: Packets can be sent over multiple blocks to break time-based correlation.
+3.  **Fragmented Withdrawal**: Merchants can withdraw individual packets separately, making the incoming funds appear as hundreds of unrelated small transactions.
+
+---
+
 Built for the **HeLa Hackathon** 🚀
 rotocol fee (default 0.00402 HUSD) |
 
