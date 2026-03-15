@@ -142,8 +142,16 @@ export default function MerchantDashboard({ wallet }) {
   // Load invoices
   const loadInvoices = async () => {
     if (!account || !provider) return;
+    
+    // Strict address check to prevent ethers.js ENS lookup crash
+    const routerAddr = CONTRACTS.ROUTER;
+    if (!routerAddr || !routerAddr.startsWith("0x") || routerAddr.length !== 42) {
+      console.warn("Invalid Router address, skipping invoice load.");
+      return;
+    }
+
     try {
-      const router = new Contract(CONTRACTS.ROUTER, ROUTER_ABI, provider);
+      const router = new Contract(routerAddr, ROUTER_ABI, provider);
       const count = await router.getMerchantInvoiceCount(account);
       const items = [];
       const statusMap = ["active", "paid", "claimed", "cancelled"];
@@ -159,7 +167,9 @@ export default function MerchantDashboard({ wallet }) {
         });
       }
       setInvoices(items.reverse());
-    } catch {}
+    } catch (err) {
+      console.error("Failed to load invoices:", err);
+    }
   };
 
   // Claim funds — merchant calls PrivacyPool.withdraw() directly from MetaMask
