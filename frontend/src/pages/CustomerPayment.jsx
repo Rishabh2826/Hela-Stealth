@@ -6,13 +6,6 @@ import { CONTRACTS, ROUTER_ABI, HUSD_ABI } from "../config";
 
 const STATUS_MAP = ["active", "paid", "cancelled"];
 
-const TIERS = [
-  { id: "std", name: "Standard", splits: 1, range: "N/A", security: 30, gas: "Low", icon: "⚡" },
-  { id: "iron", name: "Iron Shield", splits: 75, range: "50-100", security: 65, gas: "Med", icon: "🛡️" },
-  { id: "ghost", name: "Gold Ghost", splits: 350, range: "200-500", security: 85, gas: "High", icon: "👻" },
-  { id: "shadow", name: "Infinite Shadow", splits: 1000, range: "1000+", security: 98, gas: "Extreme", icon: "🌌", badge: "TOP" },
-];
-
 export default function CustomerPayment({ wallet }) {
   const { invoiceId } = useParams();
   const { account, signer, provider } = wallet;
@@ -22,9 +15,6 @@ export default function CustomerPayment({ wallet }) {
   const [paying, setPaying]     = useState(false);
   const [txHash, setTxHash]     = useState(null);
   const [error, setError]       = useState(null);
-  const [selectedTier, setSelectedTier] = useState("std");
-  const [packetProgress, setPacketProgress] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   // Load invoice details from chain
   useEffect(() => {
@@ -71,22 +61,6 @@ export default function CustomerPayment({ wallet }) {
   // Pay invoice
   const handlePay = async () => {
     if (!signer || !invoice) return;
-    
-    // V2 Packet Animation
-    if (selectedTier !== "std") {
-      setIsProcessing(true);
-      setPacketProgress(0);
-      const tier = TIERS.find(t => t.id === selectedTier);
-      const totalSteps = 20;
-      for (let i = 0; i <= totalSteps; i++) {
-        setPacketProgress(Math.floor((i / totalSteps) * 100));
-        await new Promise(r => setTimeout(r, 100));
-      }
-      // Brief pause to show completion
-      await new Promise(r => setTimeout(r, 500));
-      setIsProcessing(false);
-    }
-
     setPaying(true);
     setError(null);
     try {
@@ -251,59 +225,8 @@ export default function CustomerPayment({ wallet }) {
           </div>
         </div>
 
-        {/* Privacy Tiers Selection */}
-        {!isPaid && (
-          <div style={{ marginTop: "2rem" }}>
-            <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "1rem" }}>
-              Select Privacy Tier (V2 Advanced Packets)
-            </p>
-            <div className="tier-grid">
-              {TIERS.map(tier => (
-                <div 
-                  key={tier.id}
-                  className={`tier-card ${selectedTier === tier.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedTier(tier.id)}
-                >
-                  {tier.badge && <span className="tier-badge">{tier.badge}</span>}
-                  <span style={{ fontSize: "1.5rem", marginBottom: "8px", display: "block" }}>{tier.icon}</span>
-                  <span className="tier-name">{tier.name}</span>
-                  <span className="tier-splits">{tier.splits} Packets</span>
-                  <div className="security-meter">
-                    <div className="security-fill" style={{ width: `${tier.security}%` }}></div>
-                  </div>
-                  <span style={{ fontSize: "0.6rem", marginTop: "4px", display: "inline-block", color: tier.security > 80 ? "var(--success)" : "var(--text-muted)" }}>
-                    {tier.security}% Security
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Packet Processing Simulation */}
-        {isProcessing && (
-          <div className="packet-preparation">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Fragmenting Amount into Packets...</span>
-              <span className="mono" style={{ color: "var(--primary)" }}>{packetProgress}%</span>
-            </div>
-            <div className="security-meter" style={{ height: "8px" }}>
-              <div className="security-fill" style={{ width: `${packetProgress}%` }}></div>
-            </div>
-            <div className="packet-container">
-              {[...Array(50)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`packet-dot ${i < (packetProgress / 2) ? 'active' : ''}`}
-                  style={{ animationDelay: `${i * 0.05}s` }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* PrivacyPool Rings & QR */}
-        {!isPaid && !isProcessing && (
+        {!isPaid && (
           <div className="qr-container" style={{ marginBottom: "2rem", background: "rgba(255,255,255,0.02)" }}>
             <div className="privacy-pool-visual">
                <div className="ring"></div>
@@ -334,15 +257,23 @@ export default function CustomerPayment({ wallet }) {
             </span>
           </div>
           <div className="info-row" style={{ borderBottomColor: "rgba(255,255,255,0.05)" }}>
-            <span className="info-label">Privacy Mode</span>
-            <span className="info-value" style={{ color: "var(--primary)", fontWeight: 600 }}>
-              {TIERS.find(t => t.id === selectedTier).name}
+            <span className="info-label">Created</span>
+            <span className="info-value">
+              {new Date(invoice.createdAt * 1000).toLocaleString()}
             </span>
           </div>
+          {isPaid && invoice.payer && (
+            <div className="info-row" style={{ borderBottom: "none" }}>
+              <span className="info-label">Paid by</span>
+              <span className="info-value mono" style={{ fontSize: "0.8rem", color: "var(--success)" }}>
+                {invoice.payer.slice(0, 10)}…{invoice.payer.slice(-6)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Pay button */}
-        {!isPaid && invoice.status === "active" && !isProcessing && (
+        {!isPaid && invoice.status === "active" && (
           <>
             {!account ? (
               <button className="btn btn-primary btn-lg" style={{ width: "100%" }} onClick={wallet.connect}>
@@ -350,12 +281,12 @@ export default function CustomerPayment({ wallet }) {
               </button>
             ) : (
               <button
-                className="btn btn-primary btn-lg"
-                style={{ width: "100%", background: selectedTier === 'std' ? '' : 'linear-gradient(135deg, #14D2C9 0%, #059669 100%)' }}
+                className="btn btn-success btn-lg"
+                style={{ width: "100%" }}
                 onClick={handlePay}
                 disabled={paying}
               >
-                {paying ? <><span className="spinner" /> Linking to Vault…</> : `🔒 Secure Pay with ${TIERS.find(t => t.id === selectedTier).name}`}
+                {paying ? <><span className="spinner" /> Processing…</> : `💳 Pay ${invoice.amount} HUSD`}
               </button>
             )}
             {error && (

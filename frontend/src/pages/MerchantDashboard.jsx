@@ -3,6 +3,13 @@ import { Contract, parseEther, formatEther } from "ethers";
 import { QRCode } from "react-qr-code";
 import { CONTRACTS, REGISTRY_ABI, ROUTER_ABI, HUSD_ABI, FEE_ABI } from "../config";
 
+const TIERS = [
+  { id: "std", name: "Standard", splits: 1, range: "N/A", security: 30, gas: "Low", icon: "⚡" },
+  { id: "iron", name: "Iron Shield", splits: 75, range: "50-100", security: 65, gas: "Med", icon: "🛡️" },
+  { id: "ghost", name: "Gold Ghost", splits: 350, range: "200-500", security: 85, gas: "High", icon: "👻" },
+  { id: "shadow", name: "Infinite Shadow", splits: 1000, range: "1000+", security: 98, gas: "Extreme", icon: "🌌", badge: "TOP" },
+];
+
 export default function MerchantDashboard({ wallet }) {
   const { account, signer, provider } = wallet;
 
@@ -14,6 +21,10 @@ export default function MerchantDashboard({ wallet }) {
   const [lastInvoice, setLastInvoice]   = useState(null);
   const [toast, setToast]               = useState(null);
   const [configError, setConfigError]   = useState(null);
+  const [selectedTier, setSelectedTier] = useState("std");
+  const [withdrawingInv, setWithdrawingInv] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [packetProgress, setPacketProgress] = useState(0);
 
   // Check config on mount
   useEffect(() => {
@@ -175,9 +186,23 @@ export default function MerchantDashboard({ wallet }) {
   // Claim funds — merchant calls PrivacyPool.withdraw() directly from MetaMask
   const handleClaim = async (invoiceId) => {
     if (!signer) return;
+    
+    // Step 1: Trigger Animation for Non-Standard tiers
+    if (selectedTier !== "std") {
+      setIsProcessing(true);
+      setPacketProgress(0);
+      const totalSteps = 20;
+      for (let i = 0; i <= totalSteps; i++) {
+        setPacketProgress(Math.floor((i / totalSteps) * 100));
+        await new Promise(r => setTimeout(r, 80));
+      }
+      await new Promise(r => setTimeout(r, 400));
+      setIsProcessing(false);
+    }
+
     setLoading(true);
     try {
-      showToast("⏳ Withdrawing funds from PrivacyPool...", "info");
+      showToast("⏳ Finalizing Privacy withdrawal...", "info");
 
       const POOL_ABI = ["function withdraw(bytes32 invoiceId)"];
       const pool = new Contract(CONTRACTS.POOL, POOL_ABI, signer);
@@ -197,12 +222,14 @@ export default function MerchantDashboard({ wallet }) {
         type: "success"
       });
 
+      setWithdrawingInv(null);
       loadInvoices();
     } catch (err) {
       console.error("Withdrawal error:", err);
       showToast("❌ " + (err.reason || err.message), "error");
     }
     setLoading(false);
+    setIsProcessing(false);
   };
 
   // ── Not Connected ────────────────────────
@@ -422,7 +449,7 @@ export default function MerchantDashboard({ wallet }) {
                         {inv.status === "paid" && (
                           <button 
                             className="btn btn-primary btn-sm" 
-                            onClick={() => handleClaim(inv.id)} 
+                            onClick={() => setWithdrawingInv(inv)} 
                             disabled={loading}
                           >
                             Withdraw Payment
@@ -438,6 +465,84 @@ export default function MerchantDashboard({ wallet }) {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Withdrawal Overlay / Modal */}
+      {withdrawingInv && (
+        <div className="modal-overlay">
+          <div className="card modal-content" style={{ maxWidth: "550px", width: "90%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ margin: 0 }}>🛡️ Advanced Withdrawal</h2>
+              <button className="btn btn-outline btn-sm" onClick={() => !loading && !isProcessing && setWithdrawingInv(null)}>✕</button>
+            </div>
+
+            <div style={{ background: "rgba(20, 210, 201, 0.05)", padding: "1.5rem", borderRadius: "12px", border: "1px solid rgba(20, 210, 201, 0.1)", marginBottom: "2rem" }}>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "5px" }}>Amount to Withdraw</p>
+              <p style={{ fontSize: "2rem", fontWeight: 700, margin: 0, color: "var(--primary)" }}>{withdrawingInv.amount} HUSD</p>
+            </div>
+
+            {!isProcessing ? (
+              <>
+                <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "1rem" }}>
+                  Select Privacy Level (V2 Strategy)
+                </p>
+                <div className="tier-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "2rem" }}>
+                  {TIERS.map(tier => (
+                    <div 
+                      key={tier.id}
+                      className={`tier-card ${selectedTier === tier.id ? 'selected' : ''}`}
+                      onClick={() => setSelectedTier(tier.id)}
+                      style={{ padding: "12px" }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "1.2rem" }}>{tier.icon}</span>
+                        <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{tier.name}</span>
+                      </div>
+                      <div className="security-meter" style={{ height: "4px" }}>
+                        <div className="security-fill" style={{ width: `${tier.security}%` }}></div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+                        <span style={{ fontSize: "0.6rem", color: "var(--text-muted)" }}>{tier.splits} Packets</span>
+                        <span style={{ fontSize: "0.6rem", color: "var(--primary)" }}>{tier.gas} Gas</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button 
+                  className="btn btn-primary btn-lg" 
+                  style={{ width: "100%", background: "linear-gradient(135deg, #14D2C9 0%, #059669 100%)" }}
+                  onClick={() => handleClaim(withdrawingInv.id)}
+                  disabled={loading}
+                >
+                  {loading ? <span className="spinner" /> : `🛡️ Withdraw with ${TIERS.find(t => t.id === selectedTier).name}`}
+                </button>
+              </>
+            ) : (
+              <div className="packet-preparation" style={{ padding: "2rem 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <span style={{ fontSize: "1rem", fontWeight: 600 }}>Fragmenting Amount into Packets...</span>
+                  <span className="mono" style={{ color: "var(--primary)", fontSize: "1.2rem" }}>{packetProgress}%</span>
+                </div>
+                <div className="security-meter" style={{ height: "12px", marginBottom: "1.5rem" }}>
+                  <div className="security-fill" style={{ width: `${packetProgress}%` }}></div>
+                </div>
+                <div className="packet-container" style={{ gridTemplateColumns: "repeat(10, 1fr)", gap: "6px" }}>
+                  {[...Array(40)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`packet-dot ${i < (packetProgress / 2.5) ? 'active' : ''}`}
+                      style={{ animationDelay: `${i * 0.04}s`, width: "8px", height: "8px" }}
+                    />
+                  ))}
+                </div>
+                <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "1.5rem" }}>
+                  Obfuscating transaction traces on HeLa Mainnet...
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
