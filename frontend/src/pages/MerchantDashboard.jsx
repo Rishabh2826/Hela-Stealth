@@ -71,42 +71,83 @@ export default function MerchantDashboard({ wallet }) {
     setLoading(false);
   };
 
-  // Create invoice via Backend API (to ensure description persistence)
+  // Create invoice (on-chain + sync metadata to backend)
   const handleCreateInvoice = async () => {
-    if (!signer || !amount || !account) {
-      showToast("❌ Missing information!", "error");
+    if (!signer || !amount || !CONTRACTS.ROUTER || !CONTRACTS.HUSD || !CONTRACTS.FEE_MANAGER) {
+      showToast("❌ Missing contract configuration!", "error");
       return;
     }
     setLoading(true);
     try {
-      showToast("⏳ Creating Invoice...", "info");
-      const resp = await fetch(`${API_BASE}/invoice/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          merchantAddress: account,
-          amount,
-          description
-        })
-      });
-      const data = await resp.json();
-      
-      if (data.success) {
-        setLastInvoice({ 
-          id: data.invoice.id, 
-          amount: data.invoice.amount, 
-          description: data.invoice.description 
-        });
+      showToast("⏳ Requesting Invoice Creation...", "info");
+      const router = new Contract(CONTRACTS.ROUTER, ROUTER_ABI, signer);
+      const husd   = new Contract(CONTRACTS.HUSD, HUSD_ABI, signer);
+      const feeMgr = new Contract(CONTRACTS.FEE_MANAGER, FEE_ABI, provider);
+
+      // Approve fee
+      const fee = await feeMgr.protocolFee();
+      if (fee > 0n) {
+        const allowance = await husd.allowance(account, CONTRACTS.ROUTER);
+        if (allowance < fee) {
+          const approveTx = await husd.approve(CONTRACTS.ROUTER, parseEther("999999"));
+          await approveTx.wait();
+        }
+      }
+
+      const amountWei = parseEther(amount);
+      const tx = await router.createInvoice(amountWei);
+      const receipt = await tx.wait();
+
+      // Parse event to get invoiceId
+      let invoiceId = null;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = router.interface.parseLog({ topics: log.topics, data: log.data });
+          if (parsed?.name === "InvoiceCreated") {
+            invoiceId = parsed.args.invoiceId;
+            break;
+          }
+        } catch (parseErr) {}
+      }
+
+      // Fallback
+      if (!invoiceId) {
+        const routerRead = new Contract(CONTRACTS.ROUTER, ROUTER_ABI, provider);
+        const count = await routerRead.getMerchantInvoiceCount(account);
+        if (count > 0n) {
+          invoiceId = await routerRead.getMerchantInvoiceAt(account, count - 1n);
+        }
+      }
+
+      if (invoiceId) {
+        // --- SYNC METADATA TO BACKEND ---
+        try {
+          await fetch(`${API_BASE}/invoice/save-metadata`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              invoiceId,
+              description,
+              amount,
+              merchantAddress: account
+            })
+          });
+        } catch (syncErr) {
+          console.warn("Metadata sync failed, but invoice created:", syncErr);
+        }
+
+        setLastInvoice({ id: invoiceId, amount, description });
         showToast("📄 Invoice created!");
-        setAmount("");
-        setDescription("");
         loadInvoices();
       } else {
-        throw new Error(data.error || "Failed to create invoice");
+        showToast("⚠️ Invoice created but ID not found.", "error");
       }
+
+      setAmount("");
+      setDescription("");
     } catch (err) {
       console.error("Create invoice error:", err);
-      showToast("❌ " + err.message, "error");
+      showToast("❌ " + (err.reason || err.message), "error");
     }
     setLoading(false);
   };

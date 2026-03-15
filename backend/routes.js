@@ -42,89 +42,32 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
     }
   });
 
-  // ── POST /invoice/create ──────────────────────────────
-  router.post("/invoice/create", async (req, res) => {
+  // ── POST /invoice/save-metadata ────────────────────────
+  // Called by frontend after on-chain creation to persist description
+  router.post("/invoice/save-metadata", async (req, res) => {
     try {
-      const { merchantAddress, amount, description } = req.body;
-      if (!merchantAddress || !amount) {
-        return res.status(400).json({ error: "merchantAddress and amount required" });
-      }
+      const { invoiceId, description, amount, merchantAddress } = req.body;
+      if (!invoiceId) return res.status(400).json({ error: "invoiceId required" });
 
-      const { registry, router: payRouter, husd, feeManager } = getContracts();
-
-      // Verify merchant is registered
-      const isMerchant = await registry.isMerchant(merchantAddress);
-      if (!isMerchant) {
-        return res.status(404).json({ error: "Merchant not registered" });
-      }
-
-      const amountWei = ethers.parseEther(amount.toString());
-
-      // Approve fee + create invoice on-chain
-      const fee = await feeManager.protocolFee();
-      if (fee > 0n) {
-        const treasury = await feeManager.treasury();
-        const currentAllowance = await husd.allowance(wallet.address, payRouter.target);
-        if (currentAllowance < fee) {
-          const approveTx = await husd.approve(payRouter.target, ethers.MaxUint256);
-          await approveTx.wait();
-        }
-      }
-
-      const tx = await payRouter.createInvoice(amountWei);
-      const receipt = await tx.wait();
-
-      // Parse InvoiceCreated event
-      const iface = new ethers.Interface([
-        "event InvoiceCreated(bytes32 indexed invoiceId, address indexed merchant, uint256 amount, uint256 nonce, uint256 timestamp)",
-      ]);
-
-      let invoiceId = null;
-      for (const log of receipt.logs) {
-        try {
-          const parsed = iface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed && parsed.name === "InvoiceCreated") {
-            invoiceId = parsed.args.invoiceId;
-            break;
-          }
-        } catch (_) {}
-      }
-
-      if (!invoiceId) {
-        return res.status(500).json({ error: "Could not parse invoice ID from transaction" });
-      }
-
-      // Store locally
-      const invoice = {
-        id: invoiceId,
-        merchant: merchantAddress,
-        amount: amount.toString(),
-        amountWei: amountWei.toString(),
-        description: description || "",
-        status: "active",
-        payer: null,
-        createdAt: Date.now(),
-        paidAt: null,
-        txHash: receipt.hash,
-      };
       const storeKey = invoiceId.toLowerCase();
-      invoiceStore.set(storeKey, invoice);
-      if (saveStore) saveStore();
-      console.log(`Saved invoice metadata for ${storeKey} with desc: ${description}`);
-
-      res.json({
-        success: true,
-        invoice: {
-          id: invoiceId,
-          amount: amount.toString(),
-          description: invoice.description,
-          status: "active",
-          txHash: receipt.hash,
-          paymentUrl: `/pay/${invoiceId}`,
-        },
+      
+      // Store metadata (merging if already exists)
+      const existing = invoiceStore.get(storeKey) || {};
+      invoiceStore.set(storeKey, {
+        ...existing,
+        id: invoiceId,
+        description: description || "",
+        amount: amount || existing.amount,
+        merchant: merchantAddress || existing.merchant,
+        status: existing.status || "active",
+        createdAt: existing.createdAt || Math.floor(Date.now() / 1000)
       });
+
+      if (saveStore) saveStore();
+      console.log(`Synced metadata for ${storeKey}: ${description}`);
+      res.json({ success: true });
     } catch (err) {
-      console.error("Invoice create error:", err);
+      console.error("Sync metadata error:", err);
       res.status(500).json({ error: err.message });
     }
   });
