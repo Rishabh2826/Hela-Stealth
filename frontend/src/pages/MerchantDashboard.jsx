@@ -13,6 +13,15 @@ export default function MerchantDashboard({ wallet }) {
   const [loading, setLoading]           = useState(false);
   const [lastInvoice, setLastInvoice]   = useState(null);
   const [toast, setToast]               = useState(null);
+  const [configError, setConfigError]   = useState(null);
+
+  // Check config on mount
+  useEffect(() => {
+    const missing = Object.entries(CONTRACTS).filter(([k, v]) => !v).map(([k]) => k);
+    if (missing.length > 0) {
+      setConfigError(`Missing environment variables: ${missing.join(", ")}`);
+    }
+  }, []);
 
   // Check if merchant is registered
   useEffect(() => {
@@ -229,6 +238,11 @@ export default function MerchantDashboard({ wallet }) {
   // ── Dashboard ────────────────────────────
   return (
     <div className="dashboard-content" style={{ marginTop: "1rem" }}>
+      {configError && (
+        <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--error)", color: "var(--error)", padding: "1rem", borderRadius: "12px", marginBottom: "2rem" }}>
+          <strong>⚠️ Setup Incomplete:</strong> {configError}. Please add these to your Vercel Environment Variables and redeploy.
+        </div>
+      )}
       <header style={{ marginBottom: "3rem" }}>
         <h1 style={{ fontSize: "2.5rem", fontWeight: 800, letterSpacing: "-0.04em" }}>
           Merchant <span style={{ 
