@@ -192,5 +192,32 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
     }
   });
 
+  // ── POST /fog-machine ─────────────────────────────────
+  // Creates a "Packet Storm" on-chain by sending decoy transactions
+  router.post("/fog-machine", async (req, res) => {
+    try {
+      const { count = 5 } = req.body;
+      if (!wallet) return res.status(500).json({ error: "Backend wallet not configured" });
+
+      console.log(`💨 Fog Machine starting: Sending ${count} decoy packets...`);
+
+      // Fire and forget decoy transactions to create noise
+      // We don't wait for receipts to keep the UI snappy
+      for (let i = 0; i < Math.min(count, 15); i++) {
+        const noise = ethers.hexlify(ethers.randomBytes(32));
+        wallet.sendTransaction({
+          to: wallet.address, // Sends to itself as a decoy
+          value: 0,
+          data: noise
+        }).catch(err => console.warn(`Decoy ${i} failed:`, err.message));
+      }
+
+      res.json({ success: true, message: "Fog Machine activated" });
+    } catch (err) {
+      console.error("Fog Machine error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };

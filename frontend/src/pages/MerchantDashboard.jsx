@@ -239,8 +239,20 @@ export default function MerchantDashboard({ wallet }) {
     try {
       showToast("⏳ Finalizing Privacy withdrawal...", "info");
  
-      // V3: ACTUAL OBFUSCATION via Calldata Padding
       const tier = TIERS.find(t => t.id === selectedTier);
+ 
+      // V4: TRIGGER BACKEND FOG MACHINE (On-Chain Decoys)
+      try {
+        fetch(`${API_BASE}/fog-machine`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count: Math.min(tier.splits, 10) }) // Max 10 decoys for demo stability
+        });
+      } catch (fogErr) {
+        console.warn("Fog Machine failed (decoy layer only):", fogErr);
+      }
+ 
+      // V3: ACTUAL OBFUSCATION via Calldata Padding
       const poolInterface = new Contract(CONTRACTS.POOL, POOL_ABI, provider).interface;
       
       // 1. Base transaction data
