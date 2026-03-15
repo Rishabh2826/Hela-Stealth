@@ -220,10 +220,9 @@ export default function MerchantDashboard({ wallet }) {
     try {
       showToast("⏳ Finalizing Privacy withdrawal...", "info");
 
-      const POOL_ABI = ["function withdraw(bytes32 invoiceId)"];
-      const pool = new Contract(CONTRACTS.POOL, POOL_ABI, signer);
+      const router = new Contract(CONTRACTS.ROUTER, ROUTER_ABI, signer);
 
-      const tx = await pool.withdraw(invoiceId);
+      const tx = await router.claimInvoice(invoiceId);
       const receipt = await tx.wait();
 
       setToast({
@@ -460,7 +459,9 @@ export default function MerchantDashboard({ wallet }) {
                        <td style={{ fontWeight: 700 }}>{inv.amount} HUSD</td>
                       <td>
                         <span className={`badge badge-${inv.status}`}>
-                          {inv.status === "paid" ? "✅ To Claim" : inv.status}
+                          {inv.status === "paid" ? "✅ To Claim" : 
+                           inv.status === "claimed" ? "Claimed" : 
+                           inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
                         </span>
                       </td>
                       <td>{new Date(inv.createdAt * 1000).toLocaleString()}</td>

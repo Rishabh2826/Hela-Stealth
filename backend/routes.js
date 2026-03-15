@@ -146,17 +146,14 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
         return res.status(400).json({ error: "invoiceId required" });
       }
 
-      const { pool } = getContracts();
-      if (!pool) {
-        return res.status(500).json({ error: "PrivacyPool contract not configured" });
+      const { router: payRouter } = getContracts();
+      if (!payRouter) {
+        return res.status(500).json({ error: "PaymentRouter contract not configured" });
       }
 
-      // 1. Call privacyPool.withdraw(invoiceId)
-      // Note: In this demo, the backend wallet acts as the merchant or pays gas.
-      // If the contract requires msg.sender == merchant, the wallet must be the merchant,
-      // OR we need to pass the merchant's signature. Since it's a demo, the backend
-      // executes the transaction on the merchant's behalf.
-      const tx = await pool.withdraw(invoiceId);
+      // 1. Call payRouter.claimInvoice(invoiceId)
+      // This handles both the withdrawal and the on-chain state update
+      const tx = await payRouter.claimInvoice(invoiceId);
 
       // 2. Wait for transaction confirmation
       const receipt = await tx.wait();
