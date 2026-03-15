@@ -429,6 +429,7 @@ export default function MerchantDashboard({ wallet }) {
                 <thead>
                   <tr>
                     <th>Invoice ID</th>
+                    <th>Description</th>
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Created</th>
@@ -439,7 +440,8 @@ export default function MerchantDashboard({ wallet }) {
                   {invoices.map((inv) => (
                     <tr key={inv.id}>
                        <td className="mono" title={inv.id}>{inv.id.slice(0, 10)}…{inv.id.slice(-6)}</td>
-                      <td style={{ fontWeight: 700 }}>{inv.amount} HUSD</td>
+                       <td style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{inv.description || "—"}</td>
+                       <td style={{ fontWeight: 700 }}>{inv.amount} HUSD</td>
                       <td>
                         <span className={`badge badge-${inv.status}`}>
                           {inv.status === "paid" ? "✅ To Claim" : inv.status}

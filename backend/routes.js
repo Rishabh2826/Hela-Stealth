@@ -165,10 +165,12 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
         const id = await payRouter.getMerchantInvoiceAt(address, i);
         const inv = await payRouter.getInvoice(id);
         const statusMap = ["active", "paid", "cancelled"];
+        const local = invoiceStore.get(id);
         invoices.push({
           id,
           amount: ethers.formatEther(inv.amount),
           status: statusMap[Number(inv.status)],
+          description: local ? local.description : "",
           payer: inv.payer === ethers.ZeroAddress ? null : inv.payer,
           createdAt: Number(inv.createdAt),
           paidAt: Number(inv.paidAt) || null,
