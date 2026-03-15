@@ -4,7 +4,7 @@ const express = require("express");
 /**
  * StealthCheckout API Routes
  */
-module.exports = function createRoutes(getContracts, invoiceStore, provider, wallet) {
+module.exports = function createRoutes(getContracts, invoiceStore, provider, wallet, saveStore) {
   const router = express.Router();
 
   // ── Health ─────────────────────────────────────────────
@@ -108,6 +108,7 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
         txHash: receipt.hash,
       };
       invoiceStore.set(invoiceId, invoice);
+      if (saveStore) saveStore();
 
       res.json({
         success: true,
@@ -160,11 +161,12 @@ module.exports = function createRoutes(getContracts, invoiceStore, provider, wal
       const address = req.params.address;
       const count = await payRouter.getMerchantInvoiceCount(address);
       const invoices = [];
+      const statusMap = ["active", "paid", "claimed", "cancelled"];
 
-      for (let i = 0; i < Number(count); i++) {
+      const n = Number(count);
+      for (let i = n - 1; i >= 0; i--) {
         const id = await payRouter.getMerchantInvoiceAt(address, i);
         const inv = await payRouter.getInvoice(id);
-        const statusMap = ["active", "paid", "cancelled"];
         const local = invoiceStore.get(id);
         invoices.push({
           id,

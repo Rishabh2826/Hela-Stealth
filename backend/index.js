@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { ethers } = require("ethers");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(cors());
@@ -66,12 +68,31 @@ function getContracts() {
   };
 }
 
-// ── In-memory invoice store (for demo / hackathon) ─────────
-const invoiceStore = new Map();
+// ── In-memory invoice store with file persistence ─────────
+const DATA_FILE = path.join(__dirname, "invoices.json");
+
+function loadStore() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, "utf-8");
+      return new Map(Object.entries(JSON.parse(data)));
+    }
+  } catch (e) { console.error("Load error:", e); }
+  return new Map();
+}
+
+const invoiceStore = loadStore();
+
+function saveStore() {
+  try {
+    const obj = Object.fromEntries(invoiceStore);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(obj, null, 2));
+  } catch (e) { console.error("Save error:", e); }
+}
 
 // ── Routes ─────────────────────────────────────────────────
 const routes = require("./routes");
-app.use("/", routes(getContracts, invoiceStore, provider, wallet));
+app.use("/", routes(getContracts, invoiceStore, provider, wallet, saveStore));
 
 // ── Event listener (payment monitor) ───────────────────────
 function startEventListener() {
@@ -86,6 +107,7 @@ function startEventListener() {
         inv.status = "paid";
         inv.payer = payer;
         inv.paidAt = Number(timestamp);
+        saveStore();
       }
     });
 
@@ -100,6 +122,7 @@ function startEventListener() {
         const inv = invoiceStore.get(invoiceId);
         if (inv) {
           inv.depositTxHash = event.log.transactionHash;
+          saveStore();
         }
       });
 
@@ -109,6 +132,7 @@ function startEventListener() {
         if (inv) {
           inv.status = "claimed";
           inv.withdrawalTxHash = event.log.transactionHash;
+          saveStore();
         }
       });
     }
