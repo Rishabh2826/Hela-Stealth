@@ -1,10 +1,13 @@
 // Contract addresses – update after deployment
+// Helper to clean env vars
+const clean = (val) => (val && val !== "undefined" && val !== "null") ? val.trim() : "";
+
 export const CONTRACTS = {
-  HUSD: import.meta.env.VITE_HUSD_ADDRESS || "",
-  REGISTRY: import.meta.env.VITE_REGISTRY_ADDRESS || "",
-  ROUTER: import.meta.env.VITE_ROUTER_ADDRESS || "",
-  POOL: import.meta.env.VITE_POOL_ADDRESS || "",
-  FEE_MANAGER: import.meta.env.VITE_FEE_MANAGER_ADDRESS || "",
+  HUSD: clean(import.meta.env.VITE_HUSD_ADDRESS),
+  REGISTRY: clean(import.meta.env.VITE_REGISTRY_ADDRESS),
+  ROUTER: clean(import.meta.env.VITE_ROUTER_ADDRESS),
+  POOL: clean(import.meta.env.VITE_POOL_ADDRESS),
+  FEE_MANAGER: clean(import.meta.env.VITE_FEE_MANAGER_ADDRESS),
 };
 
 export const HELA_CHAIN = {
